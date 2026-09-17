@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Semantic Robot Description Format (SRDF) for rapidcode_two_axis.
+     The robot name MUST match the URDF (<robot name="rapidcode_two_axis">).
+     This is the semantic layer MoveIt adds on top of the URDF: which joints form
+     a planning group, named poses, and which link pairs to skip in collision
+     checking. -->
+<robot name="rapidcode_two_axis">
+
+  <!-- The planning group MoveIt plans for: the kinematic chain base_link..link2,
+       which picks up the two movable joints (joint1 about Z, joint2 about Y).
+       base_joint is fixed and contributes no DOF. -->
+  <group name="arm">
+    <chain base_link="base_link" tip_link="link2"/>
+  </group>
+
+  <!-- Named joint-space targets (selectable in RViz and by name from the API). -->
+  <group_state name="home" group="arm">
+    <joint name="joint1" value="0"/>
+    <joint name="joint2" value="0"/>
+  </group_state>
+  <group_state name="ready" group="arm">
+    <joint name="joint1" value="1.0"/>
+    <joint name="joint2" value="-1.0"/>
+  </group_state>
+
+  <!-- Allowed Collision Matrix: skip self-collision checks between links that are
+       directly connected (they can never collide in a way worth checking). The
+       URDF links carry only <visual> geometry (no <collision>), so this is mostly
+       a formality for this POC. -->
+  <disable_collisions link1="base_link" link2="link1" reason="Adjacent"/>
+  <disable_collisions link1="link1" link2="link2" reason="Adjacent"/>
+
+</robot>

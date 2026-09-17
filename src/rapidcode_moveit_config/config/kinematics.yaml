@@ -1,0 +1,9 @@
+# IK solver for the 'elfin_arm' group -> parameter robot_description_kinematics.
+# KDL is the default numeric solver. elfin5 is a 6-DOF arm, so KDL can solve
+# arbitrary Cartesian/pose goals (drag the interactive marker in RViz). Joint-space
+# planning does NOT use IK, but the solver must be configured so the MotionPlanning
+# panel loads and Cartesian goals work. Matches the vendor elfin5 kinematics.yaml.
+elfin_arm:
+  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.05

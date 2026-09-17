@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Semantic Robot Description Format (SRDF) for elfin5.
+     The robot name MUST match the URDF (<robot name="elfin5">) and the
+     MoveItConfigsBuilder("elfin5", ...) call in the launch files.
+
+     Lifted from the vendor elfin5_ros2_moveit2/config/elfin5.srdf so MoveIt's
+     semantic model is consistent with the variant-B kinematics we vendored into
+     elfin5_kinematics.xacro (see the elfin5-two-kinematic-models memory). This is
+     the semantic layer MoveIt adds on top of the URDF: the planning group, named
+     joint-space poses, the end effector, and the link pairs skipped in
+     self-collision checking. -->
+<robot name="elfin5">
+
+  <!-- The planning group MoveIt plans for: all six elfin joints, tip at
+       elfin_end_link. Joint order here matches the URDF <ros2_control> block and
+       the controller `joints:` list. -->
+  <group name="elfin_arm">
+    <link name="elfin_end_link" />
+    <joint name="elfin_joint1" />
+    <joint name="elfin_joint2" />
+    <joint name="elfin_joint3" />
+    <joint name="elfin_joint4" />
+    <joint name="elfin_joint5" />
+    <joint name="elfin_joint6" />
+  </group>
+  <group name="elfin_end_group">
+    <link name="elfin_dummy_gripper" />
+  </group>
+
+  <!-- Named joint-space targets (selectable in RViz and by name from the API). -->
+  <group_state name="home" group="elfin_arm">
+    <joint name="elfin_joint1" value="0" />
+    <joint name="elfin_joint2" value="0" />
+    <joint name="elfin_joint3" value="0" />
+    <joint name="elfin_joint4" value="0" />
+    <joint name="elfin_joint5" value="0" />
+    <joint name="elfin_joint6" value="0" />
+  </group_state>
+  <group_state name="test" group="elfin_arm">
+    <joint name="elfin_joint1" value="0" />
+    <joint name="elfin_joint2" value="0" />
+    <joint name="elfin_joint3" value="1.57" />
+    <joint name="elfin_joint4" value="0" />
+    <joint name="elfin_joint5" value="1.57" />
+    <joint name="elfin_joint6" value="0" />
+  </group_state>
+
+  <!-- End effector anchored at the arm tip. -->
+  <end_effector name="elfin_eff" parent_link="elfin_end_link" group="elfin_end_group" />
+
+  <!-- Allowed Collision Matrix: skip self-collision checks between adjacent links
+       and link pairs that can never collide. -->
+  <disable_collisions link1="elfin_base" link2="elfin_link1" reason="Adjacent" />
+  <disable_collisions link1="elfin_base" link2="elfin_link2" reason="Never" />
+  <disable_collisions link1="elfin_base" link2="elfin_link3" reason="Never" />
+  <disable_collisions link1="elfin_link1" link2="elfin_link2" reason="Adjacent" />
+  <disable_collisions link1="elfin_link1" link2="elfin_link3" reason="Never" />
+  <disable_collisions link1="elfin_link2" link2="elfin_link3" reason="Adjacent" />
+  <disable_collisions link1="elfin_link2" link2="elfin_link4" reason="Never" />
+  <disable_collisions link1="elfin_link2" link2="elfin_link5" reason="Never" />
+  <disable_collisions link1="elfin_link3" link2="elfin_link4" reason="Adjacent" />
+  <disable_collisions link1="elfin_link3" link2="elfin_link5" reason="Never" />
+  <disable_collisions link1="elfin_link3" link2="elfin_link6" reason="Never" />
+  <disable_collisions link1="elfin_link4" link2="elfin_link5" reason="Adjacent" />
+  <disable_collisions link1="elfin_link4" link2="elfin_link6" reason="Never" />
+  <disable_collisions link1="elfin_link5" link2="elfin_link6" reason="Adjacent" />
+
+</robot>

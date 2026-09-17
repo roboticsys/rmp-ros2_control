@@ -1,0 +1,31 @@
+# Pilz Industrial Motion Planner pipeline (MoveIt 2 Jazzy format: planning_plugins
+# is a list; request/response adapters are split -- same shape as ompl_planning.yaml).
+#
+# CommandPlanner provides the deterministic PTP (joint-space point-to-point),
+# LIN (linear-Cartesian) and CIRC (circular-Cartesian) trajectory generators, and
+# it is what backs the MoveGroupSequence capability: a list of these commands, each
+# with a blend_radius, planned into ONE continuous trajectory. With blend_radius > 0
+# the arm blends through the interior waypoints without stopping -- the "recipe of
+# poses, no stops" behavior.
+#
+# Limits: PTP reads per-joint velocity/acceleration limits from joint_limits.yaml
+# (robot_description_planning). LIN/CIRC read Cartesian limits from
+# pilz_cartesian_limits.yaml (auto-loaded by MoveItConfigsBuilder when this pipeline
+# is enabled). Pilz does its OWN timing, so it does NOT use the OMPL response
+# adapters (no TimeOptimalParameterization / Ruckig here).
+planning_plugins:
+  - pilz_industrial_motion_planner/CommandPlanner
+
+request_adapters:
+  - default_planning_request_adapters/ResolveConstraintFrames
+  - default_planning_request_adapters/ValidateWorkspaceBounds
+  - default_planning_request_adapters/CheckStartStateBounds
+  - default_planning_request_adapters/CheckStartStateCollision
+
+response_adapters:
+  - default_planning_response_adapters/ValidateSolution
+  - default_planning_response_adapters/DisplayMotionPath
+
+# Segment type used when a request omits planner_id. PTP is the natural default for
+# a joint-space pose recipe; the sequence sender sets planner_id explicitly anyway.
+default_planner_config: PTP

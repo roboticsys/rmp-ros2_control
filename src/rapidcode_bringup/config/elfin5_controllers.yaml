@@ -1,0 +1,64 @@
+controller_manager:
+  ros__parameters:
+    # Decoupled from the 1000 Hz rmp sample rate on purpose (see two_axis yaml): the
+    # soft-RT ROS loop must run below the firmware rate or it starves the PVT stream.
+    update_rate: 500  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    rapidcode_passthrough_trajectory_controller:
+      type: rapidcode_passthrough_trajectory_controller/PassthroughTrajectoryController
+
+rapidcode_passthrough_trajectory_controller:
+  ros__parameters:
+    # All 6 elfin joints are driven through ONE RapidCode MultiAxis by the plugin.
+    # This order MUST match the <joint> order in the URDF ros2_control block (plan
+    # gotcha #1): the plugin indexes gpio slots (j0..j5) + axes by URDF joint order,
+    # and the controller fills slots by this list's order.
+    joints:
+      - elfin_joint1
+      - elfin_joint2
+      - elfin_joint3
+      - elfin_joint4
+      - elfin_joint5
+      - elfin_joint6
+    gpio_name: trajectory_transfer
+    chunk_size: 64
+    sample_period: 0.001
+    # Resampling order, matching ros2_controllers JointTrajectoryController. One of:
+    #   auto    - pick per segment from the fields present (positions->linear,
+    #             +velocities->cubic, +velocities+accelerations->quintic), like the JTC.
+    #             MoveIt sends accelerations, so this resolves to quintic on MoveIt output.
+    #   linear / cubic / quintic - force that order regardless of the fields present.
+    # Set 'cubic' to stream a cubic-Hermite profile closer to MoveIt's own waypoint
+    # interpolation (accelerations are then ignored, not required).
+    interpolation: quadratic
+    goal_position_tolerance: 0.05
+    first_point_tolerance: 0.05
+    action_name: ~/follow_joint_trajectory
+
+    # Online jogging: a second intake, the ~/joint_trajectory TOPIC subscriber, for a
+    # continuous producer (MoveIt Servo / a jog node). It streams a single open firmware
+    # move; on producer silence the controller synthesizes a quintic decel-to-rest tail
+    # (accel=0 seed) that respects the per-joint limits below. Mutually exclusive with the
+    # action intake (reject, don't preempt).
+    online:
+      enabled: true
+      producer_timeout: 0.05   # s of producer silence before the decel-to-rest stop-tail
+      # Bounded lookahead: the feed gate keeps the "committed depth" (points the hardware
+      # accepted but hasn't executed: firmware buffer + host FIFO) inside a hysteresis
+      # band -- hold while depth >= low_water, refill up to committed_horizon (the
+      # high-water mark) once it drains below. Bounds jog lag / stop overshoot; the
+      # low_water floor must cover a few 500 Hz update periods so control-loop jitter
+      # can never starve the firmware buffer mid-open-move.
+      committed_horizon: 0.08  # s of motion; high-water mark (max committed lookahead)
+      # Refill trigger + firmware starvation floor. MUST stay above the firmware's
+      # out-of-frames watchdog (rapidcode_system kEmptyCount = 64 frames = 32 points =
+      # 0.032 s at the 1 kHz grid) or the watchdog can win the drain race and e-stop an
+      # open jog move before the gate refills.
+      low_water: 0.04
+      # Stop-tail limits per joint (rad/s, rad/s^2, rad/s^3), matching joint_limits.yaml.
+      max_velocity: [1.57, 1.57, 1.57, 1.57, 1.57, 1.57]
+      max_acceleration: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+      max_jerk: [30.0, 30.0, 30.0, 30.0, 30.0, 30.0]

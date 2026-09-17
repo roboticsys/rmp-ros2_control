@@ -1,0 +1,38 @@
+# Pilz Cartesian recipe: traces a rectangle (a drawing's bounding-box footprint),
+# so you can see and position where a drawing will land on the board before you
+# run it. Also the simplest LIN-only recipe for a first Pilz test.
+# Run with:  ros2 run rapidcode_bringup send_pilz_cartesian_recipe.py recipe_box.yaml
+#
+# Footprint (offsets from this anchor):
+#   x: [-0.0791, +0.1047]  ->  width  0.1838 m
+#   y: [-0.1141, +0.1298]  ->  height 0.2439 m
+#   (the anchor at 0,0 is INSIDE the box, offset ~+0.013,+0.008 from its centre)
+# World extent (anchor -0.45, 0.0):  x [-0.5291, -0.3453]   y [-0.1141, +0.1298]
+# Recipes that share this anchor apply relative offsets in the world
+# frame, so this rectangle coincides exactly with Amun's drawn extent. EDIT `anchor`
+# alone (identically in both files) to relocate.
+coordinates: relative
+
+ready: [0.0, 0.0, -1.5708, 0.0, -1.5708, -1.5708]
+
+# anchor: {xyz: [-0.55, -0.3, 0.271], rpy: [3.141592654, 0, 3.141592654]}   # world pose of the drawing centre; edit to relocate
+anchor: {xyz: [-0.4, -0.29, 0.271], rpy: [-3.14, 0, -1.5708]}   # world pose of the drawing centre; edit to relocate
+
+defaults:
+  blend: 0.00      # m; sharp corners (stop at each). Use >0 to round them.
+  vel: 0.1
+  acc: 0.1
+
+scale: 0.9
+rotate: 90
+
+segments:
+  # - {type: lin, xyz: [0.0, .0,  0.0]}   # travel to corner A (xmin, ymin), pen up
+  - {type: lin, xyz: [-0.0791, -0.1141,  0.00]}   # travel to corner A (xmin, ymin), pen up
+  - {type: lin, xyz: [-0.0791, -0.1141, -0.02]}   # pen down at A
+  - {type: lin, xyz: [ 0.1047, -0.1141, -0.02]}   # -> B (xmax, ymin)
+  - {type: lin, xyz: [ 0.1047,  0.1298, -0.02]}   # -> C (xmax, ymax)
+  - {type: lin, xyz: [-0.0791,  0.1298, -0.02]}   # -> D (xmin, ymax)
+  - {type: lin, xyz: [-0.0791, -0.1141, -0.02]}   # -> back to A (closes the rectangle)
+  - {type: lin, xyz: [-0.0791, -0.1141,  0.00]}   # pen up
+  - {type: lin, xyz: [ 0.00,    0.00,    0.12]}   # retract at anchor

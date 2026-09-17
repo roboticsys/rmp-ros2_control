@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rapidcode_moveit_config</name>
+  <version>0.1.0</version>
+  <description>
+    MoveIt 2 configuration for the RapidCode robots: move_group with OMPL and
+    Pilz industrial motion planners, MoveIt Servo for online jogging, and RViz.
+    The Elfin5 configuration supports joint-space and Cartesian (LIN, CIRC)
+    planning; the two-axis phantom configuration is joint-space only. Both
+    execute through the rapidcode_passthrough_trajectory_controller.
+  </description>
+  <maintainer email="tech@roboticsys.com">RSI</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- URDF source: the moveit config reuses the bringup robot description. -->
+  <exec_depend>rapidcode_bringup</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <!-- move_group server + planners + IK + execution bridge + launch helpers. -->
+  <exec_depend>moveit_ros_move_group</exec_depend>
+  <exec_depend>moveit_kinematics</exec_depend>
+  <exec_depend>moveit_planners_ompl</exec_depend>
+  <exec_depend>pilz_industrial_motion_planner</exec_depend>
+  <exec_depend>moveit_ros_visualization</exec_depend>
+  <exec_depend>moveit_simple_controller_manager</exec_depend>
+  <exec_depend>moveit_configs_utils</exec_depend>
+  <!-- Online jogging: MoveIt Servo (servo.launch.py) publishes a rolling
+       JointTrajectory straight to the passthrough controller's ~/joint_trajectory. -->
+  <exec_depend>moveit_servo</exec_depend>
+  <exec_depend>launch_param_builder</exec_depend>
+
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>joint_trajectory_controller</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

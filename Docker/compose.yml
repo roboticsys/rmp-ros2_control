@@ -1,0 +1,49 @@
+services:
+  ros2_rapidcode:
+    build:
+      context: ..   # repo root: Dockerfile needs src/ (packages) and Docker/ (build inputs)
+      dockerfile: Docker/Dockerfile
+      # Build RUN steps use host networking, so the build reaches apt and ROS
+      # mirrors even on hosts whose Docker daemon has no NAT for the default
+      # build bridge (e.g. a real-time kernel without the masquerade module).
+      network: host
+
+    image: rsi/ros2-rapidcode:latest
+    container_name: ros2_rapidcode
+
+    tty: true            # keep the container alive for `docker compose exec`
+    stdin_open: true
+
+    network_mode: host   # DDS discovery + EtherCAT NIC access (rmpnetwork)
+
+    cap_add:
+      - SYS_NICE         # set real-time process priorities
+
+    ulimits:
+      rtprio: 99         # allow real-time scheduling up to 99
+      nofile: 65536      # named MPI locks hold ~3,300 fds per controller (#934)
+
+    volumes:
+      - /dev/shm:/dev/shm  # rmp <-> RapidCode shared memory
+      # User-supplied RSI files (inputs/README.md). The entrypoint links
+      # /inputs/rsi.lic and /inputs/EtherCAT.xml into /rsi at container start.
+      - ../inputs:/inputs:ro
+
+    devices:
+      - /dev/bus/usb:/dev/bus/usb  # license dongle (Yubikey), if used
+
+    privileged: true     # full hardware + real-time access (matches rmp-realtime)
+
+  rviz:
+    image: rsi/ros2-rapidcode:latest
+    profiles: ["gui"]
+    network_mode: host
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /dev/shm:/dev/shm
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: ["bash", "-lc", "rviz2"]
+

@@ -1,0 +1,52 @@
+# Augments the URDF limits -> parameter robot_description_planning.
+# The URDF supplies position + velocity limits; MoveIt's time parameterization
+# (TOTG) + Ruckig smoothing also need ACCELERATION (and jerk) limits to turn the
+# planned geometric path into a timed trajectory with per-point P/V/A. The
+# passthrough controller REJECTS any point lacking accelerations,
+# so has_acceleration_limits MUST be true here.
+#
+# Velocity matches the vendored elfin5 URDF (<limit velocity="1.57"/> on all 6
+# joints). accel/jerk are conservative tuning values -- raise once motion is proven.
+joint_limits:
+  elfin_joint1:
+    has_velocity_limits: true
+    max_velocity: 1.57
+    has_acceleration_limits: true
+    max_acceleration: 3.0
+    has_jerk_limits: true
+    max_jerk: 30.0
+  elfin_joint2:
+    has_velocity_limits: true
+    max_velocity: 1.57
+    has_acceleration_limits: true
+    max_acceleration: 3.0
+    has_jerk_limits: true
+    max_jerk: 30.0
+  elfin_joint3:
+    has_velocity_limits: true
+    max_velocity: 1.57
+    has_acceleration_limits: true
+    max_acceleration: 3.0
+    has_jerk_limits: true
+    max_jerk: 30.0
+  elfin_joint4:
+    has_velocity_limits: true
+    max_velocity: 1.57
+    has_acceleration_limits: true
+    max_acceleration: 3.0
+    has_jerk_limits: true
+    max_jerk: 30.0
+  elfin_joint5:
+    has_velocity_limits: true
+    max_velocity: 1.57
+    has_acceleration_limits: true
+    max_acceleration: 3.0
+    has_jerk_limits: true
+    max_jerk: 30.0
+  elfin_joint6:
+    has_velocity_limits: true
+    max_velocity: 1.57
+    has_acceleration_limits: true
+    max_acceleration: 3.0
+    has_jerk_limits: true
+    max_jerk: 30.0

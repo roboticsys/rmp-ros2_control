@@ -1,0 +1,151 @@
+<?xml version="1.0"?>
+<!--
+  Copyright 2026 Robotic Systems Integration, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rapidcode_two_axis">
+
+  <!-- Two-joint robot used to exercise the rapidcode_system plugin's MultiAxis
+       path: both joints are streamed through a SINGLE RapidCode::MultiAxis
+       (one MovePVT per cycle over the group), so coordinated multi-axis
+       motion can be validated end-to-end.
+       use_hardware:=false  -> RapidCode phantom axes (no EtherCAT hardware).
+       use_hardware:=true   -> real hardware (requires NIC + drives configured). -->
+  <xacro:arg name="use_hardware" default="false"/>
+
+  <xacro:property name="chunk_capacity" value="64"/>
+  <xacro:property name="num_joints" value="2"/>
+
+  <!-- macro to add the 4 fields in a slot for a particular joint -->
+  <xacro:macro name="traj_add_joint_in_slot" params="joint slot">
+    <command_interface name="j${joint}_s${slot}_position"/>
+    <command_interface name="j${joint}_s${slot}_velocity"/>
+    <command_interface name="j${joint}_s${slot}_acceleration"/>
+    <command_interface name="j${joint}_s${slot}_jerk"/>
+  </xacro:macro>
+
+  <!-- macro to recursively apply traj_add_joint_in_slot to joints 0..num_joints-1 within one slot -->
+  <xacro:macro name="traj_add_slot" params="slot joint num_joints">
+    <xacro:if value="${joint &lt; num_joints}">
+      <xacro:traj_add_joint_in_slot joint="${joint}" slot="${slot}"/>
+      <xacro:traj_add_slot slot="${slot}" joint="${joint + 1}" num_joints="${num_joints}"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <!-- macro to recursively apply traj_add_slot to slots 0..num_slots-1 -->
+  <xacro:macro name="traj_populate_slots" params="slot num_slots num_joints">
+    <xacro:if value="${slot &lt; num_slots}">
+      <command_interface name="s${slot}_duration"/>
+      <xacro:traj_add_slot slot="${slot}" joint="0" num_joints="${num_joints}"/>
+      <xacro:traj_populate_slots slot="${slot + 1}" num_slots="${num_slots}" num_joints="${num_joints}"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <link name="world"/>
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.05" length="0.04"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+  </joint>
+
+  <link name="link1">
+    <visual>
+      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.2"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0.04" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14159" upper="3.14159" effort="100.0" velocity="3.14159"/>
+  </joint>
+
+  <!-- Second link/joint stacked on the first so both DOF are visible in RViz. -->
+  <link name="link2">
+    <visual>
+      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.03 0.03 0.2"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0.2" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.14159" upper="3.14159" effort="100.0" velocity="3.14159"/>
+  </joint>
+
+  <!-- ros2_control hardware description: the controller_manager loads the
+       rapidcode_system plugin from this block and exports the joint interfaces.
+       Two joints mapped to axes 0 and 1; the plugin binds both into one
+       MultiAxis (AxisCount/MotionCount are sized from the max axis index). -->
+  <ros2_control name="RapidCodeSystem" type="system">
+    <hardware>
+      <plugin>rapidcode_system/RapidCodeSystemHardware</plugin>
+      <param name="use_hardware">$(arg use_hardware)</param>
+      <param name="primary_nic"></param>
+      <param name="cpu_affinity">1</param>  <!-- any core but 0; phantom needs no isolation -->
+      <param name="sample_rate">1000.0</param>
+    </hardware>
+    <joint name="joint1">
+      <param name="axis">0</param>
+      <param name="user_units">1000</param>
+
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="joint2">
+      <param name="axis">1</param>
+      <param name="user_units">1000</param>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <gpio name="trajectory_transfer">
+      <!-- transfer-level scalars-->
+      <command_interface name="command_token"/>
+      <command_interface name="command_sequence"/>
+      <command_interface name="trajectory_id"/>
+      <command_interface name="trajectory_size"/>
+      <command_interface name="valid_fields"/>
+      <command_interface name="chunk_base_index"/>
+      <command_interface name="chunk_len"/>
+      <command_interface name="chunk_final"/>
+      <!-- per-slot duration + per-joint-per_slot P/V/A/J/T-->
+      <xacro:traj_populate_slots slot="0" num_slots="${chunk_capacity}" num_joints="${num_joints}"/>
+      <!-- state -->
+      <state_interface name="is_moving"/>
+      <state_interface name="ack_sequence"/>
+      <state_interface name="accepted_point_index"/>
+      <state_interface name="error_code"/>
+    </gpio>
+  </ros2_control>
+
+</robot>

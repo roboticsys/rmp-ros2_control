@@ -1,0 +1,40 @@
+controller_manager:
+  ros__parameters:
+    # Decoupled from the 1000 Hz rmp sample rate on purpose. Running the soft-RT
+    # ROS loop at the full rmp rate starves the PVT stream: sub-ms jitter can't be
+    # expressed in MovePVT's time (a whole multiple of the 1 ms sample period), so
+    # the loop feeds slower than the firmware drains and OUT_OF_FRAMES e-stops.
+    update_rate: 500  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    rapidcode_passthrough_trajectory_controller:
+      type: rapidcode_passthrough_trajectory_controller/PassthroughTrajectoryController
+
+    # Minimal multi-value alternative; mutually exclusive with the passthrough
+    # controller (both claim the joints' position command interface), so only
+    # one is active at a time.
+    forward_position_controller:
+      type: forward_command_controller/ForwardCommandController
+
+rapidcode_passthrough_trajectory_controller:
+  ros__parameters:
+    # Both joints are driven through ONE RapidCode MultiAxis by the plugin, so the
+    # controller commands them as a coordinated group (one trajectory spanning both).
+    joints:
+      - joint1
+      - joint2
+    gpio_name: trajectory_transfer
+    chunk_size: 64
+    sample_period: 0.001
+    goal_position_tolerance: 0.05
+    first_point_tolerance: 0.05
+    action_name: ~/follow_joint_trajectory
+
+forward_position_controller:
+  ros__parameters:
+    joints:
+      - joint1
+      - joint2
+    interface_name: position

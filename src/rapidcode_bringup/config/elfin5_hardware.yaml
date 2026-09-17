@@ -1,0 +1,77 @@
+# elfin5 (Hans / RA5) real-hardware calibration for the rapidcode_system plugin.
+#
+# Loaded by urdf/elfin5_rapidcode.urdf.xacro (via xacro.load_yaml) and emitted as
+# ros2_control <param> elements. This file is copied into the Docker image by
+# `./run.sh build`: set the values below BEFORE building, and rebuild after any
+# change.
+#
+# The `hardware:` block below applies in BOTH modes, and `cpu_affinity` must be set
+# before the first start, phantom included. The per-joint block applies ONLY when
+# use_hardware:=true. Phantom mode (use_hardware:=false) ignores it and uses
+# user_units=1000 with no origin/groups/error-limit, so the phantom demos are
+# unchanged.
+#
+# Ported from RSI's internal RapidCode setup code for the Hans Elfin5.
+
+# --- controller-wide (rmp MotionController) -------------------------------------
+hardware:
+  # EtherCAT primary NIC. REQUIRED for hardware -- the network will not reach
+  # OPERATIONAL until this names the interface wired to the drives (e.g. "enp3s0",
+  # "eth1"). Find it with `ip link`. Empty is fine only for phantom.
+  primary_nic: ""            # e.g. "enp3s0"; the plugin refuses to start on hardware while empty
+  # CPU core for the rmp real-time thread. REQUIRED in both modes: -1 is a
+  # placeholder that the plugin and RMP both refuse. For hardware use an isolated
+  # core (kernel `isolcpus=`); for phantom any core will do. Never use core 0.
+  cpu_affinity: -1
+  sample_rate: 1000.0        # Hz; must match the EtherCAT ENI
+
+  # Seconds to wait between amp-enable groups (see per-joint `group`). The Hans
+  # drives are brought up even-axis group first, then odd, with a pause between.
+  # NOTE: the plugin does NOT enable physical amps in on_activate (deliberate; see
+  # rapidcode_system_hardware.cpp and RUNBOOK section 7). The operator enables
+  # them out of band, and these values document the order to use.
+  amp_enable_delay: 2.0
+
+# Encoder counts per radian, shared by all six joints:
+#   2^17 (17-bit single-turn encoder) * 101 (gear ratio) / (2*pi) - 1
+# The trailing -1 is carried over verbatim from the RapidRobot test driver.
+counts_per_radian: 2106935.4267950314
+
+# --- per joint ------------------------------------------------------------------
+# Joint -> RapidCode axis (EtherCAT node). NOT identity: the first two joints are
+# SWAPPED on this hardware -- physical axis 0 is the SHOULDER (elfin_joint2) and axis
+# 1 is the BASE (elfin_joint1). Confirmed on hardware 2026-07-13 by jogging each axis
+# and watching which joint moved -- this restores the J0<->J1 swap the old RSI_RA5
+# model used (it was physical wiring, NOT a Cartesian-model artifact after all).
+# Joints 3-6 are identity (elfin_jointN -> axis N-1) -- re-verify by jog before trust.
+#
+# origin/group are PHYSICAL-AXIS properties (origin = that motor's raw encoder count
+# at zero pose), so each stays paired with its `axis:` -- axis 0 keeps origin
+# 650835495 / group 0 regardless of which joint name now drives it. NOTE: these origin
+# counts are still Hans-ported placeholders; re-measure them on the elfin5. The Hans
+# vendor's reference setup also NEGATED one of these two axes -- so expect that a
+# jog-verify may show axis 0 or 1 needs invert:true. Do NOT set invert speculatively.
+#
+#   axis        : RapidCode axis number (EtherCAT node) that drives this joint.
+#   origin      : raw encoder counts at the robot's zero pose (OriginPositionSet).
+#   invert      : true => negative user_units. FLIP per joint if it jogs opposite
+#                 to RViz for a positive command. Verify each joint on hardware.
+#   group       : amp-enable group. Even axes (0,2,4) enable before odd (1,3,5),
+#                 amp_enable_delay apart. Ascending group order.
+#   error_limit : following-error trigger in radians (E_STOP). This is a SAFETY
+#                 limit, not a precision spec: it should sit above the worst-case
+#                 legitimate following error but below anything that signals a
+#                 fault (stall, collision, a mis-configured invert running away).
+#                 0.1 rad (~5.7 deg) is a conservative bring-up value -- generous
+#                 for the old slow (0.2 rad/s) profiles, tight enough to catch a
+#                 runaway early during jog-verify. Measure peak PositionError on
+#                 representative trajectories (recorder / RapidSetupX) and set to
+#                 ~2-3x that. The old Hans code used 0.8 rad (~46 deg), which only
+#                 trips on gross failure. Omit to leave the drive/XML default.
+joints:
+  elfin_joint1: {axis: 1, origin: 663671867, invert: true, group: 1, error_limit: 0.1}  # BASE     -> EtherCAT axis 1
+  elfin_joint2: {axis: 0, origin: 650835495, invert: true, group: 0, error_limit: 0.1}  # SHOULDER -> EtherCAT axis 0
+  elfin_joint3: {axis: 2, origin: 671185347, invert: true, group: 0, error_limit: 0.1}
+  elfin_joint4: {axis: 3, origin: 671738478, invert: true, group: 1, error_limit: 0.1}
+  elfin_joint5: {axis: 4, origin: 654933641, invert: true, group: 0, error_limit: 0.1}
+  elfin_joint6: {axis: 5, origin: 650881534, invert: true, group: 1, error_limit: 0.1}

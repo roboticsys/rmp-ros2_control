@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rapidcode_system</name>
+  <version>0.1.0</version>
+  <description>
+    ros2_control SystemInterface plugin for the RSI RapidCode / RMP motion
+    controller. Maps the ros2_control read()/write() loop onto RapidCode
+    telemetry getters and chunked MovePVT streaming.
+  </description>
+  <maintainer email="tech@roboticsys.com">RSI</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>hardware_interface</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>rapidcode_trajectory_transfer</depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>rapidcode_passthrough_trajectory_controller</test_depend>
+
+
+  <!-- RapidCode/RMP is provided by the system 'rmp' Debian package supplied
+       by RSI, not by rosdep. It is located via /rsi/cmake/RSI.cmake at
+       build time and via /etc/ld.so.conf.d/rmp.conf (ldconfig) at runtime. -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+<!--
+  Copyright 2026 Robotic Systems Integration, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="elfin5">
+
+  <!-- elfin5 (6-axis) driven through the rapidcode_system SystemInterface: the
+       elfin kinematics/meshes come from elfin_description; this file adds the
+       RapidCode <ros2_control> hardware block + the trajectory_transfer gpio.
+       use_hardware:=false -> RapidCode phantom axes (no EtherCAT hardware).
+       use_hardware:=true  -> real hardware (requires NIC + drives configured).
+
+       Real-hardware calibration (per-axis origin counts, counts/rad, amp-enable
+       groups, invert flags, NIC) lives in config/elfin5_hardware.yaml and is
+       loaded below; it applies ONLY when use_hardware:=true. Phantom mode keeps
+       user_units=1000 and identity axis mapping so the phantom demos are
+       unchanged. -->
+  <xacro:arg name="use_hardware" default="false"/>
+
+  <xacro:property name="chunk_capacity" value="64"/>
+  <xacro:property name="num_joints" value="6"/>
+
+  <!-- Hardware calibration config (see config/elfin5_hardware.yaml). Loaded
+       unconditionally; the hardware-only fields are emitted only when
+       use_hardware:=true (the xacro:if blocks in rc_joint below). -->
+  <xacro:property name="hw_cfg_path" value="$(find rapidcode_bringup)/config/elfin5_hardware.yaml"/>
+  <xacro:property name="cfg" value="${xacro.load_yaml(hw_cfg_path)}"/>
+  <xacro:property name="cpr" value="${cfg['counts_per_radian']}"/>
+
+  <!-- elfin5 kinematics/meshes from the elfin5_ros2_gazebo model (variant B): the model the
+       vendor's own MoveIt/Gazebo loads, whose joint origins match the STL meshes. The
+       elfin_description/urdf/elfin5.urdf.xacro (variant A) is a stale model whose origins do
+       NOT match the meshes (links render scattered). We vendor a gazebo/transmission/
+       ros2_control-stripped copy as elfin5_kinematics.xacro. -->
+  <xacro:include filename="$(find rapidcode_bringup)/urdf/elfin5_kinematics.xacro"/>
+
+  <!-- gpio slot macros (copied verbatim from rapidcode_two_axis.urdf.xacro):
+       expand per-slot duration + per-joint P/V/A/J command interfaces. -->
+  <xacro:macro name="traj_add_joint_in_slot" params="joint slot">
+    <command_interface name="j${joint}_s${slot}_position"/>
+    <command_interface name="j${joint}_s${slot}_velocity"/>
+    <command_interface name="j${joint}_s${slot}_acceleration"/>
+    <command_interface name="j${joint}_s${slot}_jerk"/>
+  </xacro:macro>
+  <xacro:macro name="traj_add_slot" params="slot joint num_joints">
+    <xacro:if value="${joint &lt; num_joints}">
+      <xacro:traj_add_joint_in_slot joint="${joint}" slot="${slot}"/>
+      <xacro:traj_add_slot slot="${slot}" joint="${joint + 1}" num_joints="${num_joints}"/>
+    </xacro:if>
+  </xacro:macro>
+  <xacro:macro name="traj_populate_slots" params="slot num_slots num_joints">
+    <xacro:if value="${slot &lt; num_slots}">
+      <command_interface name="s${slot}_duration"/>
+      <xacro:traj_add_slot slot="${slot}" joint="0" num_joints="${num_joints}"/>
+      <xacro:traj_populate_slots slot="${slot + 1}" num_slots="${num_slots}" num_joints="${num_joints}"/>
+    </xacro:if>
+  </xacro:macro>
+
+  <!-- One elfin joint's <ros2_control> block. The hardware-only calibration (axis
+       mapping, real user_units, origin counts, amp-enable group, following-error
+       limit) is emitted only when is_hw. Phantom OMITS axis, so the plugin defaults
+       it to the joint's ordinal (identity) and keeps user_units=1000; the
+       validated phantom demos are unchanged. -->
+  <xacro:macro name="rc_joint" params="name">
+    <joint name="${name}">
+      <xacro:if value="$(arg use_hardware)">
+        <!-- Joint -> physical EtherCAT axis. NOT identity on this hardware: axis 0 is
+             the shoulder (elfin_joint2), axis 1 the base (elfin_joint1). See the YAML. -->
+        <param name="axis">${cfg['joints'][name]['axis']}</param>
+        <param name="user_units">${(-1.0 if cfg['joints'][name]['invert'] else 1.0) * cpr}</param>
+        <param name="origin">${cfg['joints'][name]['origin']}</param>
+        <param name="amp_enable_group">${cfg['joints'][name]['group']}</param>
+        <param name="error_limit">${cfg['joints'][name]['error_limit']}</param>
+      </xacro:if>
+      <xacro:unless value="$(arg use_hardware)">
+        <param name="user_units">1000</param>
+      </xacro:unless>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <ros2_control name="RapidCodeSystem" type="system">
+    <hardware>
+      <plugin>rapidcode_system/RapidCodeSystemHardware</plugin>
+      <param name="use_hardware">$(arg use_hardware)</param>
+      <param name="primary_nic">${cfg['hardware']['primary_nic']}</param>
+      <param name="cpu_affinity">${cfg['hardware']['cpu_affinity']}</param>
+      <param name="sample_rate">${cfg['hardware']['sample_rate']}</param>
+      <param name="amp_enable_delay">${cfg['hardware']['amp_enable_delay']}</param>
+    </hardware>
+
+    <!-- URDF joint ORDER elfin_joint1..6 (this order MUST match the controller's
+         `joints:` list). On hardware each joint's physical EtherCAT
+         axis is set by its `axis:` param in the YAML (NOT identity: joints 1 and 2 are
+         swapped: axis 0 = shoulder, axis 1 = base). Do NOT reorder these calls. -->
+
+    <xacro:rc_joint name="elfin_joint1"/>
+    <xacro:rc_joint name="elfin_joint2"/>
+    <xacro:rc_joint name="elfin_joint3"/>
+    <xacro:rc_joint name="elfin_joint4"/>
+    <xacro:rc_joint name="elfin_joint5"/>
+    <xacro:rc_joint name="elfin_joint6"/>
+
+    <gpio name="trajectory_transfer">
+      <!-- transfer-level scalars -->
+      <command_interface name="command_token"/>
+      <command_interface name="command_sequence"/>
+      <command_interface name="trajectory_id"/>
+      <command_interface name="trajectory_size"/>
+      <command_interface name="valid_fields"/>
+      <command_interface name="chunk_base_index"/>
+      <command_interface name="chunk_len"/>
+      <command_interface name="chunk_final"/>
+      <!-- per-slot duration + per-joint-per-slot P/V/A/J -->
+      <xacro:traj_populate_slots slot="0" num_slots="${chunk_capacity}" num_joints="${num_joints}"/>
+      <!-- state -->
+      <state_interface name="is_moving"/>
+      <state_interface name="ack_sequence"/>
+      <state_interface name="accepted_point_index"/>
+      <state_interface name="error_code"/>
+    </gpio>
+  </ros2_control>
+
+</robot>

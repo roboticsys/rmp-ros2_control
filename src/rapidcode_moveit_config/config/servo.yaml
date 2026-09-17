@@ -1,0 +1,52 @@
+move_group_name: elfin_arm
+active_subgroup: ""
+
+publish_period: 0.01
+max_expected_latency: 0.10
+incoming_command_timeout: 0.10
+
+pose_command_in_topic: ~/pose_target_cmds
+cartesian_command_in_topic: ~/delta_twist_cmds
+joint_command_in_topic: ~/delta_joint_cmds
+command_in_type: speed_units
+scale:
+  linear: 0.1
+  rotational: 0.20
+  joint: 0.20
+
+status_topic: ~/status
+# Publish the rolling JointTrajectory straight to the passthrough controller's online
+# intake. On this branch the controller consumes trajectory_msgs/JointTrajectory on
+# ~/joint_trajectory directly (it resamples, splices and synthesizes the decel-to-rest
+# stop-tail internally), so NO servo_trajectory_adapter is needed -- that adapter spoke
+# the old /stream/{start,chunk,status} protocol which no longer exists.
+command_out_topic: /rapidcode_passthrough_trajectory_controller/joint_trajectory
+command_out_type: trajectory_msgs/JointTrajectory
+publish_joint_positions: true
+publish_joint_velocities: true
+publish_joint_accelerations: false
+
+joint_topic: /joint_states
+monitored_planning_scene_topic: /planning_scene
+is_primary_planning_scene_monitor: false
+check_octomap_collisions: false
+
+# use_smoothing toggled off 2026-07-15 to isolate the ~50% joint-velocity ripple
+# that Servo emits on a constant twist (rate-independent, code:0 = no singularity/
+# collision/limit scaling). The RuckigFilterPlugin is the prime suspect. Revert to
+# true (or switch to AccelerationLimitedPlugin) once the smoother question is settled.
+use_smoothing: true
+smoothing_filter_plugin_name: online_signal_smoothing::RuckigFilterPlugin
+check_collisions: true
+self_collision_proximity_threshold: 0.02
+scene_collision_proximity_threshold: 0.04
+collision_check_rate: 20.0
+
+lower_singularity_threshold: 17.0
+hard_stop_singularity_threshold: 30.0
+leaving_singularity_threshold_multiplier: 2.0
+singularity_step_scale: 0.01
+halt_all_joints_in_joint_mode: true
+halt_all_joints_in_cartesian_mode: true
+joint_limit_margins: [0.10]
+override_velocity_scaling_factor: 0.0

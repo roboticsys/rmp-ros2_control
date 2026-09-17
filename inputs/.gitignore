@@ -1,0 +1,4 @@
+# Files supplied by the user live here; only the README is tracked.
+*
+!.gitignore
+!README.md

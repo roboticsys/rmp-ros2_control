@@ -1,0 +1,11 @@
+# Build and test artefacts.
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.venv-client/
+
+# User-supplied RSI files (see inputs/README.md). Only the README and the
+# directory's own .gitignore are tracked.
+inputs/*
+!inputs/README.md
+!inputs/.gitignore

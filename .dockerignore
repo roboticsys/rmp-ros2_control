@@ -1,0 +1,10 @@
+# Build context is the repo root (Docker/compose.yml: context: ..). The image
+# needs only src/ (colcon packages), Docker/ (Dockerfile, entrypoint), and
+# inputs/ (the rmp .deb). Everything else stays out of the context.
+*
+!src/
+!Docker/
+!inputs/
+inputs/rsi.lic
+inputs/EtherCAT.xml
+src/**/__pycache__/

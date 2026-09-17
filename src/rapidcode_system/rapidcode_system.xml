@@ -1,0 +1,11 @@
+<library path="rapidcode_system">
+  <class
+    name="rapidcode_system/RapidCodeSystemHardware"
+    type="rapidcode_system::RapidCodeSystemHardware"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>
+      ros2_control SystemInterface for the RSI RapidCode / RMP motion controller.
+      read() pulls axis telemetry; write() streams trajectory chunks via MovePVT.
+    </description>
+  </class>
+</library>
