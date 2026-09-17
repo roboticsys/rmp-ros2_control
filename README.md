@@ -9,6 +9,8 @@ robot then traces.
 Everything ROS-side runs in one Docker container. The drawing client is a plain
 Python program that runs on any machine, Windows or Linux, with no ROS install.
 
+See it in action in a video on the [RSI blog](https://www.roboticsys.com/blog/ros2-control-ethercat-robot-arm).
+
 Most of this repo was written with assistance from Claude Fable 5.1 as an
 experiment for LLM usage with RMP.
 
